@@ -39,21 +39,4 @@ iv_new = xor(iv_old,iv_new)
 
 check_admin(ciphertext.hex(),iv_new)
 
-def flip(cookie, plain):
-    start = plain.find(b'admin=False')
-    cookie = bytes.fromhex(cookie)
-    iv = [0xff]*16
-    cipher_fake = list(cookie)
-    fake = b';admin=True;'
-    for i in range(len(fake)):
-       cipher_fake[16+i] = plain[16+i] ^ cookie[16+i] ^ fake[i]
-       iv[start+i] = plain[start+i] ^ cookie[start+i] ^ fake[i]
 
-    cipher_fake = bytes(cipher_fake).hex()
-    iv = bytes(iv).hex()
-    return cipher_fake, iv
-
-expires_at = (datetime.today() + timedelta(days=1)).strftime("%s")
-plain = f"admin=False;expiry={expires_at}".encode()
-cookie, iv = flip(cookie, plain)
-print(f'{iv = }')
