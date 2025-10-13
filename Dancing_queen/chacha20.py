@@ -54,15 +54,16 @@ class ChaCha20:
     def encrypt(self, m, key, iv):
         c = b''
         self._counter = 1
-
+        state_full = []
         for i in range(0, len(m), 64):
             self._setup_state(key, iv)
             for j in range(10):
                 self._inner_block(self._state)
             c += xor(m[i:i+64], words_to_bytes(self._state))
-
+            state_full.append(self._state)
+            print(f'{self._counter = }')
             self._counter += 1
-        
+        print(f'{state_full = }')
         return c
     
 
@@ -80,3 +81,4 @@ if __name__ == '__main__':
     print(f"iv2 = '{iv2.hex()}'")
     print(f"msg_enc = '{msg_enc.hex()}'")
     print(f"flag_enc = '{flag_enc.hex()}'")
+    print(f'{key = }')

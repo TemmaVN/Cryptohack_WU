@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from utils import listener
-
 FLAG = 'crypto{????????????????????????????????????}'
 
 
@@ -70,5 +68,5 @@ class Challenge():
         return {"Response": lizzies_little_window(a, p)}
 
 
-import builtins; builtins.Challenge = Challenge # hack to enable challenge to be run locally, see https://cryptohack.org/faq/#listener
-listener.start_server(port=13385)
+chall = Challenge()
+chall.challenge()

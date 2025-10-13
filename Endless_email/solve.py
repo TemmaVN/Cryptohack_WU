@@ -26,19 +26,44 @@ with open('output.txt','r') as f:
 
 res = []
 
-def solve(ns, cs):
+# def solve(ns, cs):
+# 	M = reduce(operator.mul,ns)
+# 	Mi = [M // n for n in ns]
+# 	ti = [pow(Mr,-1,n) for Mr, n in zip(Mi,ns)]
+# 	x = sum([c*t*m for c,t,m in zip(cs,ti,Mi)]) %M
+# 	r , exact = iroot(x,3)
+# 	if exact:
+# 		return r 
+# 	else:
+# 		return None 
+
+# params = []
+# for i, j in zip(n,c):
+# 	params.append([i,j])
+
+# for cb in combinations(params,3):
+# 	ns = [x[0] for x in cb]
+# 	cs = [x[1] for x in cb]
+# 	r = solve(ns,cs)
+# 	if r == None:
+# 		continue
+# 	print(f'{long_to_bytes(r).decode() = }')
+# for cb in combinations([1,2,3,4,5,6],3):
+# 	print(f'{cb = }')
+
+def solve(ns,cs):
 	M = reduce(operator.mul,ns)
 	Mi = [M // n for n in ns]
 	ti = [pow(Mr,-1,n) for Mr, n in zip(Mi,ns)]
-	x = sum([c*t*m for c,t,m in zip(cs,ti,Mi)]) %M
-	r , exact = iroot(x,3)
-	if exact:
-		return r 
+	r = sum([m*t*Mr for m,t,Mr in zip(cs,ti,Mi)])%M
+	res, is_true = iroot(r,3)
+	if is_true:
+		return res	
 	else:
 		return None 
 
 params = []
-for i, j in zip(n,c):
+for i,j in zip(n,c):
 	params.append([i,j])
 
 for cb in combinations(params,3):
@@ -47,6 +72,4 @@ for cb in combinations(params,3):
 	r = solve(ns,cs)
 	if r == None:
 		continue
-	print(f'{long_to_bytes(r).decode() = }')
-for cb in combinations([1,2,3,4,5,6],3):
-	print(f'{cb = }')
+	print(long_to_bytes(r).decode())
