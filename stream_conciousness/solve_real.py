@@ -1,8 +1,67 @@
 #!/usr/bin/env python3
 
-encs = {'9273550e0ec81c7a932a3115fbcadc6b277f6a846996de5db5248783228d1ab55bea334aa64fb8ef389ea8d399f51bf1448d', '8a7950461fca002f9f6f7013fe9994673e7c60c165d38d59bc24919463931cf054a43f0fef5bfdf92addae8adbe254eb4edbbe1fdaf22480b91f61cd95761b356bebe6d9f4cbece526ed', '8d74435a5edb536196792402bf99d96f3b6333d0699a8a11a9658c8876da1ab151e4', '956950115eed1b76d7652509a0', '933b4f0e0bd41b6e877a2957bfa3946e327c76d67796d958ad28c5926a9f52b654bf375ba15bfdf622d0a08699f901f101e5b752ade6249cf8027ec6d0371f2c26f6e2d5b5cce4e72de0bfc8ac472c966921d3', '8d745b0e1ad5537b9f6f295bf8859465392f63c5689d8d58b763c5876c9e52b240a3374bef46babb2ad2a98acdf311a555c5fd5ab2', '8e74470e0adf017d9e683c1ebf9edc63396833cd72d38d59b870c5926a9f52a054b92f0fe549b3bc3f9ea7cf99ef1bf74f8cff4af9b3288db91b7accd0241c2f72f1a4', '9869560e379a04669b667008f785c32a3f667e8a', '9e6e475d0d971e6e9c633e1cbf8bda6e77427ac86d9a9754ab7d', '8e74504b1b9a11608e797009ea84da6339683f84719f9848b06a82c6638e52b85ab8284af504fdc82eccbcc5c3f315a4', '8d7357421a9a3a2f9f6b261ebf88d1663e6a65c165d38d59bc6ac5926a9b06f07cea3840f344b9bb39dba4c9d1bb07f042c4b05be8e33e9cea5261d9d03e062d6feee3d1e1d6eae477', '9b6f0247189a3a2f9f6b345bfe84cd2a206660cc21879611bb61c58f6cda06b850ea2946e140a9ba6bf7e5c9d8f553f100', '933c51461fd61f2f9b65231ebf8fc26f257667cc689d9e11b86a81c66c9506f052af2f0fee41b0bb29dfa6c197', '9b72460e379a006796663c5bf68dda65256a33cd75dd', '9e734e42079a04669b66700ff783da61777b7bc575d3b016b4248983638c1bbe52ea3a0ff54dbef425dae5c2cce816e44fc8b05ee3f76a80f1137a9f843e163263e4e5c2f09fccaa25b9ecd4e95829c4612884a403a33e3d4e3106adc72a31467ed6c656', '9673544b529a037d98683119f3938b2a036776dd2197965ffe70c58d6c9505f05da52c0fe25ab8fa39c7e5c3cdbb1df60d8cf850fab32281f41b62d691221a2e61aca49eb5cbedef688de9c5a75e3996652a99a402ae7738446317ab8c', '9368024d1fd4547bd768355beb85c664776066d02dd39b44ad248c92229913be15a83e0fef4fb3f439dba184', 'b96e5b5e0ad50864c473654cedd98067087d20d134c0a600ec5b83d235ce1ead', '8d74435a5edb5363987e7014f9cac0623e6174d721879150ad24918e679452a350af364ae208a9f46bd3a08acaf454e840dee65ae1ff2581ea526fd19476062e67f6fed1fcd1e4e824a9b380a14a2ad3242698e70eab7b74497f01acc5642f5278dbc016edb1c593fb4a5dbb118eb91d3b21031447e1efb6045d0c9e535f3662e8e3cd9339793be89f377e2ea0b249a3288364f5240cf8ac30209304db45ec', '933c51461fd61f23d7437717f3cad865246a33c177968b48ad6c8c8865da1bb615a23e0fe247b8e82599b18adaf419e001cef15ce6bd', '8e74475d1b9a1b6085793508b3cac0623e7c33c760818b58b86380c62fda1abf42ea120fea47bcef23dbe5c7c0e811e9478cf951ade7229dea526dde82241a2161e7aa9db5cbedef31ebedc5e94a30da242c94f75ae67c2154313be5d16227587d98cf1deff897d2e64b18ef0d83fc0473290a125daf88', '94730e0e379d1f63d76d3f5bf684947e382f57cb6d9f8011b86a81c6769f1ebc15a23e5da65ba9e92ad7a2c2cdbb1bf055'}
-count = 22
-key_real = b'\xfd\x0172s\xf5\x7f\xda\x1c".~\xbas'
-flag_enc = '9e734e42079a04669b66700ff783da61777b7bc575d3b016b4248983638c1bbe52ea3a0ff54dbef425dae5c2cce816e44fc8b05ee3f76a80f1137a9f843e163263e4e5c2f09fccaa25b9ecd4e95829c4612884a403a33e3d4e3106adc72a31467ed6c656'
+import requests
+import json
+from tqdm import tqdm
+import time
 
-print(f'{len(key_real) = }')
+URL = r"https://aes.cryptohack.org/stream_consciousness/encrypt"
+
+# run this when starting the challenge
+def get_cts():
+    all_cts = set()
+    for _ in tqdm(range(60)):
+        all_cts.add(json.loads(requests.get(URL).text)["ciphertext"])
+
+    with open("cts.txt", "w") as f:
+        f.write('\n'.join(all_cts))
+    
+def main():
+    with open("cts.txt", "r") as f:
+        all_cts = f.readlines()
+
+    keys = set()
+    
+    for ct in all_cts:
+        keys.add(xor_strings(ct, ascii_to_hex(r"crypto{")))
+    
+    master_key = 0
+    
+    key_candidates = [[], []]
+    
+    for key in keys:
+        for ct in all_cts:
+            txt = hex_to_ascii(xor_strings(key, ct))
+            if "I shall" in txt:
+                key_candidates[0].append(key)
+            if "Love, p" in txt:
+                key_candidates[1].append(key)
+    
+    for i in key_candidates[0]:
+        for j in key_candidates[1]:
+            if i == j:
+                master_key = i
+
+    while True:
+        if 'y' == input("Is the flag here? [y] "):
+            break
+        for i in range(256):
+            attempt_key = master_key + ints_to_hex([i])
+            txt_batch = []
+            for ct in all_cts:
+                try:
+                    txt = hex_to_ascii(xor_strings(attempt_key, ct))
+                    txt_batch.append(txt)
+                except UnicodeDecodeError:
+                    break
+                if r"crypto{" in txt:
+                    print("Curr flag status: ", txt, "Curr Master: ", master_key)
+               
+            if txt_batch:
+                print(txt_batch)               
+                if 'y' == input("Does it look legit? [y] "):
+                    master_key += ints_to_hex([i])
+                    break
+    
+if __name__ == "__main__":
+    main()
