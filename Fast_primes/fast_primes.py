@@ -46,6 +46,7 @@ def get_primorial(n):
 
 def get_fast_prime():
     M = get_primorial(40)
+    print(f'{M = }')
     while True:
         k = random.randint(2**28, 2**29-1)
         a = random.randint(2**20, 2**62-1)

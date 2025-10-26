@@ -13,6 +13,8 @@ def recv_json():
 	return json.loads(data)
 
 io.recvline()
-send_recv({'document': })
+request = {
+	'document': ['0e306561559aa787d00bc6f70bbdfe3404cf03659e704f8534c00ffb659c4', 'c8740cc942feb2da115a3f4155cbb8607497386656d7d1f34a42059d78f5a8dd1ef']
+}
+send_recv(request)
 io.interactive()
-
