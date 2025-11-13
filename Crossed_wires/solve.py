@@ -8,34 +8,63 @@ My_Friend = [(217113082253463155427068446184415657410464982777169799434783605980
 Enc =  20304610279578186738172766224224793119885071262464464448863461184092225736054747976985179673905441502689126216282897704508745403799054734121583968853999791604281615154100736259131453424385364324630229671185343778172807262640709301838274824603101692485662726226902121105591137437331463201881264245562214012160875177167442010952439360623396658974413900469093836794752270399520074596329058725874834082188697377597949405779039139194196065364426213208345461407030771089787529200057105746584493554722790592530472869581310117300343461207750821737840042745530876391793484035024644475535353227851321505537398888106855012746117
 e = 0x10001
 
-k = d*e - 1
+# k = d*e - 1
+# p = 1
+# q =1
+# while True:
+# 	g = randint(2,N-1)
+# 	t = k 
+# 	check = False
+# 	while t%2 == 0:
+# 		t = t//2 
+# 		x = pow(g,t,N) 
+# 		y = GCD(x-1,N)
+# 		if x > 1 and y > 1:
+# 			p = y 
+# 			q = N // y 
+# 			check = True 
+# 			break 
+# 	if check: break 
+
+# print(f'{p = }')
+# print(f'{q = }')
+# phi = (p-1)*(q-1)
+# keys = []
+
+# for i in My_Friend:
+# 	keys.append(inverse(i[1],phi))
+
+# pl = Enc
+# for i in keys[::-1]:
+# 	pl = pow(pl,i,N)
+
+# print(f'{long_to_bytes(pl) = }')
+
+k = e*d - 1
 p = 1
-q =1
+q = 1
 while True:
-	g = randint(2,N-1)
-	t = k 
+	t = k
+	g = randint(2, N-1)
 	check = False
-	while t%2 == 0:
-		t = t//2 
-		x = pow(g,t,N) 
+	while t % 2 == 0:
+		t //=2
+		x = pow(g,t,N)
 		y = GCD(x-1,N)
-		if x > 1 and y > 1:
+		if y > 1 and x > 1:
 			p = y 
-			q = N // y 
+			q = N // p 
 			check = True 
-			break 
+			break
 	if check: break 
 
-print(f'{p = }')
-print(f'{q = }')
 phi = (p-1)*(q-1)
-keys = []
-
+key = [] 
 for i in My_Friend:
-	keys.append(inverse(i[1],phi))
+	key.append(inverse(i[1],phi))
 
 pl = Enc
-for i in keys[::-1]:
-	pl = pow(pl,i,N)
+for k in key[::-1]:
+	pl = pow(pl,k,N)
 
 print(f'{long_to_bytes(pl) = }')

@@ -3,6 +3,7 @@
 from pwn import *
 from Crypto.Util.number import *
 import json
+from tqdm import tqdm
 
 io = remote('socket.cryptohack.org',13421)
 def send_json(data):
@@ -13,15 +14,54 @@ def recv_json():
 	data = io.recvline().decode().rstrip()
 	return json.loads(data)
 
+def ints_to_hex(int_list):
+    ret = ''
+    for i in int_list:
+        ret += hex(i)[2:].zfill(2)
+    return ret
+
+def fix_xor_vals(xor_vals,n):
+    out = []
+    for i in xor_vals:
+        out.append(i ^ n ^ (n-1))
+    return out
+
 io.recvline()
 send_json({"option": "encrypt"})
 ct = recv_json()["ct"]
 iv = bytes.fromhex(ct[:32])
-ct = bytes.fromhex(ct[32:])
+ct1 = bytes.fromhex(ct[32:64])
+ct2 = bytes.fromhex(ct[64:])
 log.info(f'{iv = }')
-log.info(f'{ct = }')
+log.info(f'{ct1 = }')
+log.info(f'{ct2 = }')
+curr_ct = ct1
 
-send_json({"option": "unpad","ct": (iv+ct).hex()})
+xor_vals = []
+decipher = []
+processed = []
+
+for i in range(2):
+    for pad_discovered in tqdm(range(1,17)):
+        xor_vals = fix_xor_vals(xor_vals, pad_discovered)
+        for i in range(256):
+            to_send = iv.hex()[:(16 - pad_discovered)*2] + ints_to_hex([i] + xor_vals)
+            send_json({"option": "unpad", "ct" : to_send + curr_ct.hex()})
+            res = recv_json()["result"]
+            if res:
+                xor_vals.insert(0,i)
+                decipher.append(i ^ pad_discovered ^ int(iv.hex()[(16 - pad_discovered)*2:(16 - pad_discovered + 1)*2 ], 16))
+                break
+    xor_vals = []
+    curr_ct = ct2 
+    iv = ct1 
+    processed += decipher[::-1]
+    decipher = []
+
+final_mess = bytes.fromhex(ints_to_hex(processed))
+send_json({"option":"check","message": final_mess })
+
+
 io.interactive()
 
 '''

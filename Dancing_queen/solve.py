@@ -57,8 +57,10 @@ iv = 'e42758d6d218013ea63e3c49'
 c = 'f3afbada8237af6e94c7d2065ee0e221a1748b8c7b11105a8cc8a1c74253611c94fe7ea6fa8a9133505772ef619f04b05d2e2b0732cc483df72ccebb09a92c211ef5a52628094f09a30fc692cb25647f'
 
 state = get_key(c,msg,iv)[0]
+print(f'jsdksbdjaskd : {state}')
 for i in range(10):
 	state = un_inner_block(state)
+	print(f'dnlasndsnl : {state = }')
 
 print(f'{state = }')
 idx = 0
