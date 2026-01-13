@@ -8,6 +8,9 @@ def generate_basis(n):
     for i in range(3, int(n**0.5)+1, 2):
         if basis[i]:
             basis[i*i::2*i] = [False]*((n-i*i-1)//(2*i)+1)
+            print(f'{i*i = }')
+            print(f'{2*i = }')
+            print(f'{basis[i*i::2*i] = }')
     return [2] + [i for i in range(3, n, 2) if basis[i]]
 
 
@@ -68,5 +71,4 @@ class Challenge():
         return {"Response": lizzies_little_window(a, p)}
 
 
-chall = Challenge()
-chall.challenge()
+generate_basis(64)

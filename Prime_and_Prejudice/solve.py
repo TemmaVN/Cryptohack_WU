@@ -1,133 +1,144 @@
 #!/usr/bin/env python3
-from collections import namedtuple
+
 from Crypto.Util.number import *
-from sympy.ntheory.modular import crt
-import libnum, itertools, operator, functools, tqdm, json
-from pwn import remote
+import itertools
+from tqdm import tqdm
 
+def generate_basic(n):
+    basic = [True]*n 
+    for i in range(3,int(n**0.5)+1,2):
+        if basic[i]:
+            basic[i*i::2*i] = [False]*((n - i*i - 1)//(2*i) + 1)
+    return [2] + [i for i in range(3,n,2) if basic[i]]
 
-class StrongPseudoPrimeGenerator:
-    check_QR = lambda a, p: pow(a, (p - 1) // 2, p) == 1
-    SPPG_Result = namedtuple('SPPG_Result', ['ok', 'pseudoPrime', 'factors'])
+def miller_rabin(n,b):
+    if n == 2 or n == 3: return True
+    if n<=1 or n %2 == 0: return False
+    r,s = 0, n-1
+    while s%2 == 0:
+        s >>= 1
+        r += 1
 
-    def miller_rabin(self, n):
-        """
-        Miller Rabin test testing over prime basis `self.basis`
-        """
-        if n == 2 or n == 3:
-            return True
-
-        if n % 2 == 0:
+    basic = generate_basic(b)
+    for b in basic:
+        x = pow(b,s,n)
+        if x == 1 or x == n-1:
+            continue
+        for _ in range(r-1):
+            x = pow(x,2,n)
+            if x == n-1:
+                break
+        else:
             return False
+    return True
 
-        r, s = 0, n - 1
-        while s % 2 == 0:
-            r += 1
-            s //= 2
-        for b in self.basis:
-            x = pow(b, s, n)
-            if x == 1 or x == n - 1:
-                continue
-            for _ in range(r - 1):
-                x = pow(x, 2, n)
-                if x == n - 1:
-                    break
-            else:
-                return False
-        return True
+def xgcd(a,b):
+    s = 0
+    t = 1 
+    r = b  
+    s1 = 1 
+    t1 = 0 
+    r1 = a  
+    while not (r == 0):
+        q = r1 // r 
+        r1, r = r, r1 - q*r 
+        s1, s = s, s1 - q*s 
+        t1, t = t, t1 - q*t 
+    return (r1,s1,t1)
 
-    def init_Sa(self):
-        self.Sa = []
-        for p in self.basis:
-            f = set()
-            for i in range(3, 200 * p):
-                if isPrime(i) and not StrongPseudoPrimeGenerator.check_QR(p, i):
-                    f.add(i % (4 * p))
-            if p in f:
-                f.remove(p)
-            self.Sa.append(list(f))
+def crt1(residures, modulos):
+    rm = list(zip(residures, modulos))
+    cur_res , cur_mod = rm[0]
+    for r,m in rm[1:]:
+        g = GCD(cur_mod, m)
+        if not r % g == cur_res %g:
+            return -1, -1
+        r1,s,t = xgcd(m//g,cur_mod//g)
+        cur_res = cur_res * (m//g) * s + r * (cur_mod//g) * t 
+        cur_mod *= m//g
+        cur_res %= cur_mod
+    return cur_res, cur_mod
 
-    def init_Sb(self):
-        self.Sb = []
-        for idx, f in enumerate(self.Sa):
-            p = self.basis[idx]
-            cur = set(f)
-            for i in range(1, len(self.k)):
-                new = set()
-                for num in f:
-                    res = (num + self.k[i] - 1) * inverse(self.k[i], p * 4)
-                    if res % 4 == 3:
-                        new.add(res % (p * 4))
-                cur = cur.intersection(new)
-            self.Sb.append(list(cur))
-    
-    def generate_p(self, p1):
-        return [i * (p1 - 1) + 1 for i in self.k]
+primes = generate_basic(64)
+print(f'{len(primes) = }')
+fool = []
+h = 3
+def legendre(a,p):
+    return pow(a,(p-1)//2,p)
 
-    def get_p_prod(self, p1):
-        return functools.reduce(operator.mul, self.generate_p(p1))
+for p in primes:
+    f = set()
+    for i in generate_basic(200*p)[1:]:
+        if legendre(p,i) == i-1:
+            f.add(i % (4*p))
+    fool.append(list(f))
 
-    def __init__(self, basis, k: list = [1, 101, 181]):
-        self.basis = sorted(list(set(basis))) 
-        self.k = k
-        for num in self.basis:
-            if not isPrime(num):
-                raise ValueError('basis should be prime list')
-        if len(k) < 3:
-            raise ValueError('len(k) should >= 3')
-        if k[0] != 1:
-            raise ValueError('k[0] should be 1')
-        if len(k) != len(set(k)):
-            raise ValueError('k should not contains same number')
-        self.init_Sa()
-        self.init_Sb()
-    
-    def generate(self, boundl, boundr):
-        for chosen_set in itertools.product(*self.Sb):
-            residues = [self.k[1] - inverse(self.k[2], self.k[1]), self.k[2] - inverse(self.k[1], self.k[2])]
-            modules = [self.k[1], self.k[2]]
-            for i, t in enumerate(chosen_set):
-                residues.append(t)
-                modules.append(4 * self.basis[i])
-            result = crt(modules, residues)
-            if not result:
-                continue
-            sol, mod = result
-            found = False
-            range_left = sol
-            l, r = 1, boundl
-            while l <= r:
-                mid = (l + r) // 2
-                if self.get_p_prod(mid * mod + sol) < boundl:
-                    l = mid + 1
-                else:
-                    r = mid - 1
-                    range_left = mid * mod + sol
-            for cur_t in tqdm.tqdm(range(range_left, min(range_left + 100000 * mod, boundr), mod)):
-                if isPrime(cur_t):
-                    pseudoPrime = self.get_p_prod(cur_t)
-                    factors = self.generate_p(cur_t)
-                    if self.miller_rabin(pseudoPrime):
-                        if boundl <= pseudoPrime <= boundr:
-                            found = True
-                            return StrongPseudoPrimeGenerator.SPPG_Result(ok=True, pseudoPrime=pseudoPrime, factors=factors)
-        return StrongPseudoPrimeGenerator.SPPG_Result(ok=False, pseudoPrime=-1, factors=[])
+print(fool)
+ks = [1, 998244353, 233] 
+fool2 = []
 
-def generate_basis(n):
-    basis = [True] * n
-    for i in range(3, int(n**0.5)+1, 2):
-        if basis[i]:
-            basis[i*i::2*i] = [False]*((n-i*i-1)//(2*i)+1)
-    return [2] + [i for i in range(3, n, 2) if basis[i]]
+for p, f in enumerate(fool):
+    prime = primes[p]
+    m = prime*4
+    cur_set = set(f)
+    for i in range(1,h):
+        new_set = set()
+        for ff in f:
+            if ((ff + ks[i] - 1)*inverse(ks[i],m)) % 4 == 3:
+                new_set.add(((ff + ks[i] - 1)*inverse(ks[i],m)) % m)
+        cur_set = cur_set.intersection(new_set)
+    fool2.append(cur_set)
 
-gen = StrongPseudoPrimeGenerator(generate_basis(64))
-result = gen.generate(2**600, 2**900)
-if result.ok:
-    print('Success')
-    toSend = {'prime': result.pseudoPrime, 'base': result.factors[0]}
-    r = remote('socket.cryptohack.org', 13385)
-    r.recvline()
-    r.send(json.dumps(toSend).encode() + b'\n')
-    print(json.loads(r.recvline().decode())['Response'])
-else:
-    print('Fail')
+print(f'{fool2 = }')
+mm = 1
+for a in fool2:
+    mm *= len(a)
+
+print(f'{mm = }')
+pr = 0 
+for tup in itertools.product(*fool2):
+    residures = []
+    modulos = []
+    for i, t in enumerate(tup):
+        residures.append(t)
+        modulos.append(primes[i]*4)
+    residures.append(ks[1] - inverse(ks[2],ks[1]))
+    modulos.append(ks[1])
+    residures.append(ks[2] - inverse(ks[1], ks[2]))
+    modulos.append(ks[2])
+
+    sol, modul = crt1(residures, modulos)
+    found = False
+    if not sol == -1:
+        cur_t = sol
+        cur_t = 2**73*modul + cur_t
+        for i in tqdm(range(100000)):
+            if isPrime(cur_t):
+                fin = cur_t
+                facs = [cur_t]
+                for ii in range(1,h):
+                    facs.append(ks[ii]*(cur_t-1) + 1)
+                    fin *= ks[ii]*(cur_t - 1) + 1
+                if (miller_rabin(fin,64)):
+                    print(f'{isPrime(fin) = }')
+                    print(f'{fin = }')
+                    print(f'{facs = }')
+                    if fin.bit_length() >= 600 and fin.bit_length() <= 900:
+                        found = True
+                        break 
+            cur_t += modul
+
+    if found: 
+        break   
+
+import json
+from pwn import *
+io = remote('socket.cryptohack.org',13385)
+def send_json(data):
+    payload = json.dumps(data).encode()
+    io.sendline(payload)
+
+
+data = {'prime': fin, 'base': facs[0]}
+send_json(data)
+io.interactive()
